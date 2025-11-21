@@ -3,6 +3,8 @@ import * as clientService from "../services/clientServices.js";
 import bcrypt from 'bcrypt';
 import { query } from "../db.js";
 import jwt from 'jsonwebtoken';
+import { validationResult } from 'express-validator';
+// import { logger } from '../utils/logger.js';
 
 
 
@@ -21,109 +23,8 @@ else{
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
-}
+} 
 
-
-// export const createClient = async (req: Request, res: Response) => {
-// //     if(req.body){
-// //         const clientData = req.body;
-// //         const data = matchedData(clientData);
-// //         const result = validationResult(req);
-// //       console.log("result",result);
-// //         if(!result.isEmpty()){
-// //           res.status(400).send({ errors: result.array() });
-// //           return;
-// //         }
-      
-// //       const newAddUser = await clientService.createClient(data);
-// //       data.password = await hashPassword(data.password);
-// //       console.log("data",data);
-// //       try {
-// //         await newAddUser.save()
-// //         .then(() => console.log("Client saved successfully"))
-// //         .catch((err: Error) => console.error("Error saving client:", err)); 
-      
-// //         res.status(201).send(newAddUser);
-// //       } catch(err: any) {
-// //         console.log("Error ---------------- ",err);
-// //         res.status(400).send({error: (err as Error).message});
-// //         return;
-// //       }
-
-// //     // try {
-// //     //     const clientData = req.body;
-// //     //     const newClient = await clientService.createClient(clientData);
-// //     //     console.log("New Client:", newClient); 
-// //     //     res.status(200).json(newClient);
-// //     // } catch (err) { 
-// //     //     console.error('Error adding client:', err);
-// //     //     res.status(500).json({ message: 'Internal Server Error' });
-// //     // }
-// // }
-
-// const {client_id, first_name, last_name, email, password_hash, isactive} = req.body;
-
-// const reqData = matchedData(req.body);
-// const result = validationResult(req);
-
-// console.log("result",result);
-// console.log("reqData",reqData);
-
-// if (!email || !password_hash || !first_name || !last_name ) {
-//     res.status(400).json({ 'message': 'Username and password are required.' });
-//     return;
-// }
-
-// const foundUser = await clientService.getUserByEmail(email);
-// if (foundUser) {
-//     res.status(400).json({ 'message': 'User already exists.' });
-//     return;
-// }
-
-// const match = await bcrypt.compare(password_hash, foundUser.password);
-// console.log("match",match);
-
-
-// if(match){
-//     const hashedPassword = await hashPassword(password_hash);
-
-// const roles = Object.values(foundUser.roles || {}).filter(Boolean);
-
-// const 
-
-//     const data = {
-//         client_id,
-//         first_name,
-//         last_name,
-//         email,
-//         password_hash: hashedPassword,
-//         isactive
-//     };
-
-//     const accessToken = jwt.sign(
-//         {
-//           "UserInfo": {
-//             "username": foundUser.name,
-//             "roles": roles
-//           }
-//         },
-//         SECRET_KEY,
-//         { expiresIn: "20m" }
-//       );
-  
-//       const newRefreshToken = jwt.sign(
-//         { "username": foundUser.name },
-//         SECRET_KEY,
-//         { expiresIn: '30d' }
-//       );
-
-//       res.status(200).json({
-//         accessToken,
-//         refreshToken: newRefreshToken
-//       });
-    
-// }
-// };
 
 
 
@@ -149,34 +50,34 @@ if(!clientData){
     res.status(400).json({ 'message': 'first_name, last_name, email, password are required.' });
     return;
 }
-
+console.log("second operation =============")
 const foundUser = await clientService.getUserByEmail(clientData.email);
 if (foundUser) {
     res.status(400).json({ 'message': 'User already exists.' });
     return;
 }
-
+console.log("thired operation =============")
   try {
     
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(clientData.password, salt);
     
-
+    console.log("fourth operation =============")
     // Save user to database
     const { rows } = await query(
       'INSERT INTO client (first_name, last_name, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING *',
       [clientData.first_name, clientData.last_name, clientData.email, passwordHash]
     );
-    
+    console.log("five operation =============")
     const accessToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
       expiresIn: "20m",
     });
-    
+    console.log("six operation =============")
     const refreshToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
       expiresIn: "30d",
     });
-    
+    console.log("success operation =============")
     res.status(201).json(
         {
         "meta": "",
@@ -186,7 +87,10 @@ if (foundUser) {
             { 
                 user: rows[0],
                 "jwtAuthResult": { 
-                    accessToken, refreshToken 
+                    accessToken,
+                "refreshToken": {
+                    refreshToken 
+                }
                 } 
             }
   });
@@ -229,11 +133,14 @@ const {email, password} = req.body;
       expiresIn: "30d",
   });
   
-  res.status(201).json(
+  res.status(200).json(
       {
       "meta": "",
       "succeeded": true,
       "message": "User logged in successfully",
+      "errors": [
+        "string"
+      ],
       "data":
           { 
             user: rows[0], 
@@ -254,94 +161,214 @@ const {email, password} = req.body;
 
 
 
-// Get current user
-export const getMe = async (req, res) => {
-    const {id} = req.params;
-    console.log("id +++++++", id);
-    // Add this check at the start of your controller
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+
+
+export const changePassword = async (req, res) => {
+
+  const {currentPassword, newPassword} = req.body;
+
+try {
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+
+  const userId = req.id;
+  console.log("userId +++++++", userId);
+  console.log("email +++++++", req.email);
+  const userWithPassword = await clientService.getUserByEmail(req.email);
+  console.log("userWithPassword +++++++", userWithPassword);
+
+  if (!userWithPassword) {
+      return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Check password
+  const isMatch = await bcrypt.compare(currentPassword, userWithPassword.password_hash);
+  if (!isMatch) { 
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }else{
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+    const { rows } = await query(
+      'UPDATE client SET password_hash = $1 WHERE id = $2 RETURNING *',
+      [passwordHash, userId]
+    );
+    return res.status(200).json(
+      {
+        "meta": "",
+        "succeeded": true,
+        "message": "Password changed successfully",
+        "errors": [
+          null
+        ],
+        "data":
+            { 
+              user: rows[0]
+            }
+    });
+  }
+
+
+} catch(err){
+  if (err instanceof Error) {
+    res.status(500).json({
+      "meta": "",
+      "succeeded": false,
+      "message": "Password changed failed",
+      "errors": [
+        err.message
+      ],
+      "data": null
+  } 
+  );
+  } else {
+    res.status(500).json({
+      "meta": "",
+      "succeeded": false,
+      "message": "Password changed failed",
+      "errors": [
+        'An unknown error occurred'
+      ],
+      "data": null
+  } 
+  );
+  } 
+}
+
+}
+
+
+
+
+
+export const sendConfirmEmail = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        meta: "",
+        succeeded: false,
+        message: 'Validation failed',
+        errors: errors.array(),
+        data: null
+      });
     }
-  
-    try {
-      const { rows } = await query(
-        'SELECT id, username, email FROM client WHERE id = $1',
-        [req.user.id]  // Now TypeScript knows req.user exists
-      );
-      
-      if (rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      res.json(rows[0]);
-    } catch (err) {
-      if (err instanceof Error) {
-        res.status(500).json({ error: err.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
-      }
-    }
-  };
-
-
-
-export const updateClient = async (req, res) => {
     
-    try {
-        const clientId = req.params.id;
-        const clientData = req.body;
-        const updatedClient = await clientService.updateClient(clientId, clientData);
-        if (!updatedClient) {
-            return res.status(404).json({ message: 'Client not found' });
-        }
-        res.status(200).json(updatedClient);
-
-    } catch (err) {
-      if (err instanceof Error) {
-        res.status(500).json({ error: err.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
-      }  
+    console.log("first =============");
+    const { email } = req.body;
+    const userWithPassword = await clientService.getUserByEmail(email);
+    
+    console.log("second =============");
+    if (!userWithPassword) {
+      return res.status(404).json({
+        meta: "",
+        succeeded: false,
+        message: 'User not found',
+        errors: [null],
+        data: null
+      });
     }
+    
+    console.log("userWithPassword +++++++", userWithPassword);
+    console.log("third =============");
+    
+    const confirmationToken = await clientService.generateConfirmationToken(userWithPassword.client_id);
+    console.log("confirmationToken +++++++", confirmationToken);
+    console.log("fourth =============");
+    
+    const emailSent = await clientService.emailService(
+      userWithPassword.email,
+      userWithPassword.first_name + " " + userWithPassword.last_name || userWithPassword.email,
+      confirmationToken
+    );
+    
+    console.log("fifth =============");
+    console.log("emailSent result +++++++", emailSent);
+    
+    if (!emailSent) {
+      return res.status(500).json({
+        meta: "",
+        succeeded: false,
+        message: 'Failed to send confirmation email. Please try again.',
+        errors: [null],
+        data: null
+      });
+    }
+    
+    console.log("sixth =============");
+    
+    return res.status(200).json({
+      meta: "",
+      succeeded: true,
+      message: 'Confirmation email sent successfully',
+      error: null,
+      data: {
+        email: userWithPassword.email,
+        expiresIn: '24 hours'
+      }
+    });
+  } catch (error) {
+    // CRITICAL FIX: Log the actual error to see what's going wrong
+    console.error("Error in sendConfirmEmail:", error);
+    console.error("Error stack:", error.stack);
+    
+    return res.status(500).json({
+      meta: "",
+      succeeded: false,
+      message: 'Failed to send confirmation email',
+      errors: [error.message], // Return the actual error message
+      data: null
+    });
+  }
 };
 
 
-export const deleteClient = async (req, res) => {
-    try {
-        const clientId = req.params.id;
-        const deleted = await clientService.deleteClient(clientId);
-        if (!deleted) {
-        return res.status(404).json({ message: 'Client not found' });
-        }
-
-        res.status(200).send();
-
-    } catch (err) {
-      if (err instanceof Error) {
-        res.status(500).json({ error: err.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
-      }  }
-};
 
 
-export const searchClients = async (req, res) => {
-    try {
-      const searchTerm = req.query.q; // Get the search term from the query parameters
-      const clients = await clientService.searchClients(searchTerm);
-      res.status(200).json(clients);
-    } catch (err) {
-      if (err instanceof Error) {
-        res.status(500).json({ error: err.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
-      }  
+
+
+export const confirmEmail = async (req,res) => {
+
+const { token } = req.body;
+  try {
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const { client_id } = decodedToken;
+    const userWithPassword = await clientService.getUserByEmail(client_id);
+    if (!userWithPassword) {
+      return res.status(404).json({
+        meta: "",
+        succeeded: false,
+        message: 'User not found',
+        errors: [null],
+        data: null
+      });
     }
-  };
-
-
-
-
-
+    const updatedUser = await clientService.updateClient(userWithPassword.client_id, { isactive: true });
+    return res.status(200).json({
+      meta: "",
+      succeeded: true,
+      message: 'Email confirmed successfully',
+      error: null,
+      data: updatedUser
+    });
+    
+  } catch (error) {
+   console.error("Error in confirmEmail:", error);
+   console.error("Error stack:", error.stack);
+   
+   return res.status(500).json({
+     meta: "",
+     succeeded: false,
+     message: 'Failed to confirm email',
+     errors: [error.message], // Return the actual error message
+     data: null
+   });
+  }
+}
   
   

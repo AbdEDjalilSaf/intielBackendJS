@@ -3,14 +3,17 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import apiRoutes from "./routes/api.js";
 import dotenv from 'dotenv';
+import cors from "cors";
+import corsOptions from './config/corsConfig.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(cors(corsOptions))
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
@@ -25,7 +28,7 @@ const options = {
     },
     servers: [
       {
-        url: `http://localhost:8080`,
+        url: `http://localhost:3000`,
       },
     ],
   },
