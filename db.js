@@ -10,6 +10,7 @@ const db = new pg.Client({
     database: process.env.PG_DATABASE, //name of table in database
     password: process.env.PG_PASSWORD,  // pssword = toot;
     port: Number(process.env.PG_PORT),  // 5432
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     // ssl: {
     //   rejectUnauthorized: false
     // } 

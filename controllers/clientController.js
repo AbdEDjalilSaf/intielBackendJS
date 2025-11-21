@@ -246,7 +246,7 @@ try {
 
 
 
-export const sendConfirmEmail = async (req, res) => {
+export const sendConfirmEmail = async (req, res) => { 
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
