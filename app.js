@@ -36,7 +36,7 @@ const options = {
 };
 
 const specs = swaggerJsdoc(options);
-app.use('/swagger/app.html', swaggerUi.serve, swaggerUi.setup(specs));
+app.use('/swagger/index.html', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Routes
 app.use(apiRoutes);

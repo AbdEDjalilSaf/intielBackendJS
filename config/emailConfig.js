@@ -29,7 +29,8 @@ export const createTransporter = () => {
         console.log('Email transporter is ready to send messages');
       }
     });
-
+    console.log("three here ===============")
+    console.log("transporter ========", transporter);
     return transporter;
   } catch (error) {
     console.error('Error creating email transporter:', error);

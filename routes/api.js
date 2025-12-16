@@ -278,18 +278,12 @@ router.put('/api/Authentication/changePassword',authorizationToken,changePasswor
 
 /**
  * @swagger
- * tags:
- *   name: ConfirmEmail
- *   description: ConfirmEmail management API
- */
-
-/**
- * @swagger
- * /api/ConfirmEmail/sendConfirmEmail:
+ * /api/Authentication/refreshToken:
  *   post:
- *     summary: Send confirmation email
- *     description: Send a confirmation email to verify user's email address. Rate limited to 5 requests per 15 minutes.
- *     tags: [ConfirmEmail]
+ *     summary: refreshToken
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -297,44 +291,35 @@ router.put('/api/Authentication/changePassword',authorizationToken,changePasswor
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - refreshToken
  *             properties:
  *               email:
  *                 type: string
- *                 format: email
- *                 description: The user's email address to send confirmation to
+ *                 description: refreshToken
  *             example:
- *               email: john@example.com
+ *               refreshToken: refreshToken
  *     responses:
  *       200:
- *         description: Confirmation email sent successfully
+ *         description: OK
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Confirmation email sent successfully"
- *                 succeeded:
- *                   type: boolean
- *                   example: true
- *       429:
- *         description: Too many requests - rate limit exceeded
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Too many confirmation email attempts. Please try again later."
- *       400:
- *         description: Bad request - invalid email or user not found
- *       500:
- *         description: Internal server error - failed to send email
+ *             type: object
+ *               - meta
+ *               - succeeded
+ *               - message
+ *               - errors
+ *               - data
+ *             example:
+ *               meta : ""
+ *               succeeded : true
+ *               message: success done
+ *               errors : ""
+ *               data : string
+ * 
  */
-router.post('/api/ConfirmEmail/sendConfirmEmail', confirmEmailLimiter, clientController.sendConfirmEmail);
+
+router.post('/api/Authentication/refreshToken',clientController.refreshToken)
 
 /**
  * @swagger

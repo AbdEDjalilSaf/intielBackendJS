@@ -1,6 +1,5 @@
 import { query } from "../db.js"
 import jwt from 'jsonwebtoken';
-import { transporter } from '../config/emailConfig.js';
 
 
 export const getClients = async() => {
@@ -88,7 +87,7 @@ export const generateConfirmationToken = async (userId) => {
   try {
     console.log("userId +++++++", userId);
 
-    // Check if JWT_SECRET exists
+    // Check if JWT_SECRET exists 
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not defined in environment variables");
     }
@@ -105,60 +104,7 @@ export const generateConfirmationToken = async (userId) => {
   }
 };
 
-export const emailService = async (email, name, token) => {
-  try {
-    console.log("Starting email service...");
 
- 
-    await transporter.verify();
-    console.log('✅ SMTP connection successful');
-    
-    // Check if SMTP is configured
-    if (!process.env.SMTP_USER) {
-      throw new Error("SMTP_USER is not defined in environment variables");
-    }
-
-    // Check if transporter is initialized
-    if (!transporter) {
-      throw new Error("Email transporter is not initialized. Check SMTP configuration.");
-    }
-
-    const mailOptions = {
-      from: process.env.SMTP_USER,
-      to: email,
-      subject: "Confirm your email address",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Email Confirmation</h2>
-          <p>Hello ${name},</p>
-          <p>Please click on the following link to confirm your email address:</p>
-          <p>
-            <a href="http://localhost:3000/confirm/${token}" 
-               style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Confirm Email
-            </a>
-          </p>
-          <p>Or copy and paste this link in your browser:</p>
-          <p>http://localhost:3000/confirm/${token}</p>
-          <p>Thank you,</p>
-        </div>
-      `,
-      text: `Hello ${name},\n\nPlease click on the following link to confirm your email address:\nhttp://localhost:3000/confirm/${token}\n\nThank you,`
-    };
-
-    console.log("Attempting to send email to:", email);
-    console.log("looking one +++++++");
-    console.log("transporter +++++++", transporter);
-    const result = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", result.messageId);
- 
-    return true;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    console.error("Email error details:", error.message);
-    throw new Error(`Email service failed: ${error.message}`);
-  }
-};
 
 export const updateClient = async (clientId, clientData) => {
     const { client_id, first_name, last_name, email, password_hash, isactive } = clientData;

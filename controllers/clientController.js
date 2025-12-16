@@ -70,11 +70,18 @@ console.log("thired operation =============")
       [clientData.first_name, clientData.last_name, clientData.email, passwordHash]
     );
     console.log("five operation =============")
-    const accessToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
+    const accessToken = jwt.sign({ 
+    client_id: rows[0].client_id,
+    email: rows[0].email
+     }, process.env.JWT_SECRET, {
       expiresIn: "20m",
     });
     console.log("six operation =============")
-    const refreshToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
+    const refreshToken = jwt.sign(
+      {
+        client_id: rows[0].client_id   // ✅ REQUIRED
+      },
+      process.env.JWT_SECRET, {
       expiresIn: "30d",
     });
     console.log("success operation =============")
@@ -125,11 +132,14 @@ const {email, password} = req.body;
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const accessToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
+    const accessToken = jwt.sign({  
+    client_id: rows[0].client_id,
+    email: rows[0].email 
+    }, process.env.JWT_SECRET, {
       expiresIn: "20m",
     });
     
-    const refreshToken = jwt.sign({ id: rows[0].id }, process.env.JWT_SECRET, {
+    const refreshToken = jwt.sign({ client_id: rows[0].client_id }, process.env.JWT_SECRET, {
       expiresIn: "30d",
   });
   
@@ -159,6 +169,113 @@ const {email, password} = req.body;
 };
 
 
+
+export const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      meta: "",
+      succeeded: false,
+      message: "Refresh token is required",
+      errors: ["No refresh token provided"],
+      data: null
+    });
+  }
+
+  try {
+    // ✅ Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+
+    console.log("Decoded refresh token:", decoded);
+
+    // ✅ Must contain client_id
+    if (!decoded.client_id) {
+      return res.status(401).json({
+        meta: "",
+        succeeded: false,
+        message: "Invalid refresh token",
+        errors: ["Token does not contain client_id"],
+        data: null
+      });
+    }
+
+    const clientId = decoded.client_id;
+
+    // ✅ Query using ONLY existing column
+    const { rows } = await query(
+      "SELECT client_id, email FROM client WHERE client_id = $1",
+      [clientId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({
+        meta: "",
+        succeeded: false,
+        message: "User not found",
+        errors: ["Invalid refresh token"],
+        data: null
+      });
+    }
+
+    const user = rows[0];
+
+    // ✅ New access token
+    const newAccessToken = jwt.sign(
+      {
+        client_id: user.client_id,
+        email: user.email
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "20m" }
+    );
+
+   
+
+    return res.status(200).json({
+      meta: "",
+      succeeded: true,
+      message: "Token refreshed successfully",
+      errors: [],
+      data: {
+        jwtAuthResult: {
+          accessToken: newAccessToken
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Refresh token error:", error);
+
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({
+        meta: "",
+        succeeded: false,
+        message: "Refresh token expired",
+        errors: ["Please login again"],
+        data: null
+      });
+    }
+
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({
+        meta: "",
+        succeeded: false,
+        message: "Invalid refresh token",
+        errors: ["Invalid token"],
+        data: null
+      });
+    }
+
+    return res.status(500).json({
+      meta: "",
+      succeeded: false,
+      message: "Internal server error",
+      errors: [error.message],
+      data: null
+    });
+  }
+};
 
 
 
@@ -241,91 +358,6 @@ try {
 }
 
 }
-
-
-
-
-
-export const sendConfirmEmail = async (req, res) => { 
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        meta: "",
-        succeeded: false,
-        message: 'Validation failed',
-        errors: errors.array(),
-        data: null
-      });
-    }
-    
-    console.log("first =============");
-    const { email } = req.body;
-    const userWithPassword = await clientService.getUserByEmail(email);
-    
-    console.log("second =============");
-    if (!userWithPassword) {
-      return res.status(404).json({
-        meta: "",
-        succeeded: false,
-        message: 'User not found',
-        errors: [null],
-        data: null
-      });
-    }
-    
-    console.log("userWithPassword +++++++", userWithPassword);
-    console.log("third =============");
-    
-    const confirmationToken = await clientService.generateConfirmationToken(userWithPassword.client_id);
-    console.log("confirmationToken +++++++", confirmationToken);
-    console.log("fourth =============");
-    
-    const emailSent = await clientService.emailService(
-      userWithPassword.email,
-      userWithPassword.first_name + " " + userWithPassword.last_name || userWithPassword.email,
-      confirmationToken
-    );
-    
-    console.log("fifth =============");
-    console.log("emailSent result +++++++", emailSent);
-    
-    if (!emailSent) {
-      return res.status(500).json({
-        meta: "",
-        succeeded: false,
-        message: 'Failed to send confirmation email. Please try again.',
-        errors: [null],
-        data: null
-      });
-    }
-    
-    console.log("sixth =============");
-    
-    return res.status(200).json({
-      meta: "",
-      succeeded: true,
-      message: 'Confirmation email sent successfully',
-      error: null,
-      data: {
-        email: userWithPassword.email,
-        expiresIn: '24 hours'
-      }
-    });
-  } catch (error) {
-    // CRITICAL FIX: Log the actual error to see what's going wrong
-    console.error("Error in sendConfirmEmail:", error);
-    console.error("Error stack:", error.stack);
-    
-    return res.status(500).json({
-      meta: "",
-      succeeded: false,
-      message: 'Failed to send confirmation email',
-      errors: [error.message], // Return the actual error message
-      data: null
-    });
-  }
-};
 
 
 
